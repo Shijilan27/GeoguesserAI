@@ -1,0 +1,6 @@
+{
+  "name": "GeoGuesser AI",
+  "description": "An application that uses AI to guess the geographical location of an uploaded image.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
