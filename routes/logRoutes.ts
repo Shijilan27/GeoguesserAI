@@ -92,4 +92,15 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/logs - Delete all log entries
+router.delete('/', async (req: Request, res: Response) => {
+  try {
+    await Log.deleteMany({});
+    res.status(200).json({ message: 'All logs deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting all logs:', error);
+    res.status(500).json({ message: 'Server error while deleting all logs.', error });
+  }
+});
+
 export default router;

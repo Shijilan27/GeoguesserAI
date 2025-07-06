@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaTrash, FaDownload, FaEllipsisV, FaCog, FaFilter, FaPlus, FaArrowLeft } from 'react-icons/fa';
+import { FaTrash, FaDownload, FaEllipsisV, FaCog, FaFilter, FaArrowLeft } from 'react-icons/fa';
 import { Tooltip } from 'react-tooltip';
 
 const ADMIN_PASSWORD = '#2712Shiji'; // Change this to your desired password
@@ -31,6 +31,10 @@ const AdminLogViewer: React.FC = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [error, setError] = useState('');
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [filterUser, setFilterUser] = useState('');
+  const [filterFeedback, setFilterFeedback] = useState('');
 
   useEffect(() => {
     if (authenticated) {
@@ -49,6 +53,20 @@ const AdminLogViewer: React.FC = () => {
     } else {
       setError('Incorrect password');
     }
+  };
+
+  const fetchLogs = () => {
+    fetch('http://localhost:3001/api/logs')
+      .then(res => res.json())
+      .then(setLogs)
+      .catch(() => setError('Failed to fetch logs'));
+  };
+
+  const handleClearAllLogs = async () => {
+    if (!window.confirm('Are you sure you want to delete all logs? This action cannot be undone.')) return;
+    await fetch('http://localhost:3001/api/logs', { method: 'DELETE' });
+    fetchLogs();
+    setShowSettings(false);
   };
 
   // Dummy handlers for actions
@@ -97,11 +115,42 @@ const AdminLogViewer: React.FC = () => {
       <div className="sticky top-0 z-20 w-full bg-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-6 border-b border-slate-200">
         <h2 className="text-3xl font-bold text-slate-900">All User Logs <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full align-middle">New</span></h2>
         <div className="flex gap-2 items-center">
-          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg shadow-sm"><FaFilter /> Filter</button>
-          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg shadow-sm"><FaCog /> Settings</button>
-          <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md font-semibold"><FaPlus /> Add User</button>
+          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg shadow-sm" onClick={() => setShowFilter(v => !v)}><FaFilter /> Filter</button>
+          <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg shadow-sm" onClick={() => setShowSettings(v => !v)}><FaCog /> Settings</button>
         </div>
       </div>
+      {/* Filter UI */}
+      {showFilter && (
+        <div className="p-4 bg-slate-50 border-b border-slate-200 flex gap-4 items-center">
+          <input
+            type="text"
+            placeholder="Filter by user name"
+            value={filterUser}
+            onChange={e => setFilterUser(e.target.value)}
+            className="p-2 rounded border border-slate-300"
+          />
+          <select
+            value={filterFeedback}
+            onChange={e => setFilterFeedback(e.target.value)}
+            className="p-2 rounded border border-slate-300"
+          >
+            <option value="">All Feedback</option>
+            <option value="correct">Correct</option>
+            <option value="incorrect">Incorrect</option>
+            <option value="not provided">Not Provided</option>
+          </select>
+        </div>
+      )}
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col gap-4 min-w-[300px]">
+            <h3 className="text-lg font-bold mb-2">Settings</h3>
+            <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold" onClick={handleClearAllLogs}>Clear All Logs</button>
+            <button className="mt-2 text-slate-600 hover:text-slate-900 underline" onClick={() => setShowSettings(false)}>Close</button>
+          </div>
+        </div>
+      )}
       {/* Table Section - fills the rest of the page */}
       <div className="flex-1 w-full h-full overflow-auto">
         <div className="w-full h-full">
@@ -125,10 +174,16 @@ const AdminLogViewer: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {logs.length === 0 ? (
+              {logs.filter(log =>
+                (!filterUser || (log.userName && log.userName.toLowerCase().includes(filterUser.toLowerCase()))) &&
+                (!filterFeedback || (log.feedback && log.feedback.toLowerCase() === filterFeedback))
+              ).length === 0 ? (
                 <tr><td colSpan={14} className="text-center p-8 text-slate-500">No logs found.</td></tr>
               ) : (
-                logs.map((log, idx) => {
+                logs.filter(log =>
+                  (!filterUser || (log.userName && log.userName.toLowerCase().includes(filterUser.toLowerCase()))) &&
+                  (!filterFeedback || (log.feedback && log.feedback.toLowerCase() === filterFeedback))
+                ).map((log, idx) => {
                   // Confidence as a percentage for progress bar
                   let confidencePercent = 0;
                   if (log.confidence === 'High') confidencePercent = 90;
